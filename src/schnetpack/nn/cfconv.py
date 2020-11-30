@@ -74,12 +74,16 @@ class CFConv(nn.Module):
         def inner(x, neighbors, pairwise_mask):
             # pass initial embeddings through Dense layer
             y = self.in2f(x)
+            print(x.shape, y.shape)
             # reshape y for element-wise multiplication by W
             nbh_size = neighbors.size()
             nbh = neighbors.view(-1, nbh_size[1] * nbh_size[2], 1)
             nbh = nbh.expand(-1, -1, y.size(2))
+            print(neighbors.shape, nbh.shape)
             y = torch.gather(y, 1, nbh)
             y = y.view(nbh_size[0], nbh_size[1], nbh_size[2], -1)
+            print(y.shape)
+            print('')
 
             # element-wise multiplication, aggregating and Dense layer
             y = y * W
