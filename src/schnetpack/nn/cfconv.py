@@ -4,6 +4,8 @@ from torch import nn
 from schnetpack.nn import Dense
 from schnetpack.nn.base import Aggregate
 
+from pytorch_memlab import LineProfiler
+
 
 __all__ = ["CFConv"]
 
@@ -69,17 +71,26 @@ class CFConv(nn.Module):
             C = self.cutoff_network(r_ij)
             W = W * C.unsqueeze(-1)
 
-        # pass initial embeddings through Dense layer
-        y = self.in2f(x)
-        # reshape y for element-wise multiplication by W
-        nbh_size = neighbors.size()
-        nbh = neighbors.view(-1, nbh_size[1] * nbh_size[2], 1)
-        nbh = nbh.expand(-1, -1, y.size(2))
-        y = torch.gather(y, 1, nbh)
-        y = y.view(nbh_size[0], nbh_size[1], nbh_size[2], -1)
+        def inner(x, neighbors, pairwise_mask):
+            # pass initial embeddings through Dense layer
+            y = self.in2f(x)
+            # reshape y for element-wise multiplication by W
+            nbh_size = neighbors.size()
+            nbh = neighbors.view(-1, nbh_size[1] * nbh_size[2], 1)
+            nbh = nbh.expand(-1, -1, y.size(2))
+            y = torch.gather(y, 1, nbh)
+            y = y.view(nbh_size[0], nbh_size[1], nbh_size[2], -1)
 
-        # element-wise multiplication, aggregating and Dense layer
-        y = y * W
-        y = self.agg(y, pairwise_mask)
-        y = self.f2out(y)
+            # element-wise multiplication, aggregating and Dense layer
+            y = y * W
+            y = self.agg(y, pairwise_mask)
+            y = self.f2out(y)
+
+            return y
+
+        with LineProfiler(inner) as prof:
+            y = inner(x, neighbors, pairwise_mask)
+
+        prof.print_stats()
+
         return y

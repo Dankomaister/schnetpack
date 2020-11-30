@@ -9,7 +9,6 @@ from schnetpack.nn.acsf import GaussianSmearing
 from schnetpack.nn.neighbors import AtomDistances
 from schnetpack.nn.activations import shifted_softplus
 
-from pytorch_memlab import LineProfiler
 
 class SchNetInteraction(nn.Module):
     r"""SchNet interaction block for modeling interactions of atomistic systems.
@@ -73,14 +72,8 @@ class SchNetInteraction(nn.Module):
 
         """
         # continuous-filter convolution interaction block followed by Dense layer
-
-        with LineProfiler(self.cfconv) as prof:
-            v = self.cfconv(x, r_ij, neighbors, neighbor_mask, f_ij)
-
+        v = self.cfconv(x, r_ij, neighbors, neighbor_mask, f_ij)
         v = self.dense(v)
-
-        prof.print_stats()
-
         return v
 
 
